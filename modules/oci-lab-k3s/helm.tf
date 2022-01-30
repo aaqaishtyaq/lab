@@ -69,7 +69,7 @@ resource "helm_release" "nginx-ingress" {
 
   set {
     name  = "autoscaling.minReplicas"
-    value = "1"
+    value = "2"
   }
 
   set {
