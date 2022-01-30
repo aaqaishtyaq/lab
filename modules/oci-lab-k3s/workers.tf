@@ -1,43 +1,3 @@
-resource "oci_core_instance" "x86worker" {
-  availability_domain = element(local.server_ad_names, (var.freetier_server_ad_list - 1))
-  compartment_id      = var.compartment_id
-  shape               = "VM.Standard.E2.1.Micro"
-
-  display_name = "x86worker"
-
-  create_vnic_details {
-    subnet_id        = oci_core_subnet.public_subnet.id
-    display_name     = "primary"
-    assign_public_ip = true
-    hostname_label   = "x86worker"
-  }
-
-  agent_config {
-    plugins_config {
-      name          = "OS Management Service Agent"
-      desired_state = "DISABLED"
-    }
-  }
-
-  source_details {
-    source_id   = data.oci_core_images.amd64.images.0.id
-    source_type = "image"
-  }
-
-  metadata = {
-    ssh_authorized_keys = var.ssh_public_key
-    user_data           = data.template_cloudinit_config.x86worker.rendered
-  }
-
-  lifecycle {
-    ignore_changes = [
-      source_details,
-      defined_tags,
-      create_vnic_details[0].defined_tags
-    ]
-  }
-}
-
 resource "oci_core_instance_configuration" "worker" {
   compartment_id = var.compartment_id
   display_name   = "${var.project_name}-worker"
@@ -57,8 +17,8 @@ resource "oci_core_instance_configuration" "worker" {
       }
 
       shape_config {
-        ocpus         = 2
-        memory_in_gbs = 12
+        ocpus         = 4
+        memory_in_gbs = 24
       }
 
       source_details {
@@ -75,10 +35,18 @@ resource "oci_core_instance_configuration" "worker" {
 
   lifecycle {
     ignore_changes = [
-      instance_details[0].launch_details[0].source_details,
-      defined_tags
+      instance_details[0].launch_details[0].source_details
     ]
   }
+}
+
+resource "oci_core_volume" "persistent_block" {
+    #Required
+    compartment_id = var.compartment_id
+
+    availability_domain = element(local.server_ad_names, (var.freetier_server_ad_list - 1))
+    display_name        = "PersistentVol"
+    size_in_gbs         = "100"
 }
 
 resource "oci_core_network_security_group" "nginx" {
@@ -148,13 +116,6 @@ resource "oci_load_balancer_backend_set" "nginx" {
   }
 }
 
-resource "oci_load_balancer_backend" "x86worker_backend" {
-    backendset_name = oci_load_balancer_backend_set.nginx.name
-    ip_address = oci_core_instance.x86worker.private_ip
-    load_balancer_id = oci_load_balancer.nginx.id
-    port = 30080
-}
-
 resource "oci_load_balancer_listener" "nginx" {
   default_backend_set_name = oci_load_balancer_backend_set.nginx.name
   load_balancer_id         = oci_load_balancer.nginx.id
@@ -170,7 +131,7 @@ resource "oci_load_balancer_listener" "nginx" {
 resource "oci_core_instance_pool" "worker" {
   compartment_id            = var.compartment_id
   instance_configuration_id = oci_core_instance_configuration.worker.id
-  size                      = 2
+  size                      = 1
   display_name              = "${var.project_name}-worker"
 
   state = "RUNNING"
@@ -188,12 +149,5 @@ resource "oci_core_instance_pool" "worker" {
     load_balancer_id = oci_load_balancer.nginx.id
     port             = 30080
     vnic_selection   = "PrimaryVnic"
-  }
-
-  lifecycle {
-    ignore_changes = [
-      defined_tags,
-      state
-    ]
   }
 }
