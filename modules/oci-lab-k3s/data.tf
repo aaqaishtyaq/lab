@@ -107,7 +107,7 @@ data "template_cloudinit_config" "worker" {
 data "oci_core_images" "aarch64" {
   compartment_id           = var.compartment_id
   operating_system         = "Canonical Ubuntu"
-  operating_system_version = "20.04"
+  operating_system_version = "22.04"
 
   filter {
     name   = "display_name"
@@ -119,5 +119,5 @@ data "oci_core_images" "aarch64" {
 data "oci_core_images" "amd64" {
   compartment_id           = var.compartment_id
   operating_system         = "Canonical Ubuntu"
-  operating_system_version = "20.04 Minimal"
+  operating_system_version = "22.04 Minimal"
 }
