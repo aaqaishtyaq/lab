@@ -15,7 +15,7 @@ output "images_aarch64" {
 }
 
 output "loadbalacer_ip" {
-  value = oci_load_balancer.nginx.ip_addresses.0
+  value = oci_load_balancer.nginx.ip_address_details.0.ip_address
 }
 
 output "local" {
